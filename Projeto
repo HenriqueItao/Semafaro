@@ -115,6 +115,7 @@ void Maquina_Estados() {
   if(Estado==0 && Botao==1){ 
     Estado=1;
     Botao=0;
+    Segundos=5;
     Timer1.setPeriod(1000000*Segundos);
   }
   else if(Estado==1) {
@@ -138,7 +139,7 @@ void Maquina_Estados() {
       Cont1=0;
       Cont2=0;
       Pisca=1;
-      Segundos=5;
+      Segundos=3;
       Timer1.setPeriod(1000000*Segundos);      
     }
   }
@@ -204,7 +205,6 @@ void loop() {
     else if(Estado==1) {
       digitalWrite(Semafaro_Verde, LOW);
       digitalWrite(Semafaro_Amarelo, HIGH);
-      Segundos=5;
     }
     else if(Estado==2) {
       digitalWrite(Semafaro_Amarelo, LOW);
