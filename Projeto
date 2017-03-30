@@ -1,0 +1,228 @@
+int Semafaro_Verde = 7;
+int Semafaro_Amarelo = 6;
+int Semafaro_Vermelho = 2;
+int Pedestre_Verde = 3;
+int Pedestre_Vermelho = 4;
+int Porta_Botao = 5;
+int Segundos = 5;
+int Estado = 0;
+int Botao = 0;
+int LDR = 0;
+float Luz = 0;
+int Cont1 = 0;
+int Cont2 = 0;
+int Cont3 = 10;
+int Pisca = 1;
+int Noite = 0;
+
+#include <TimerOne.h>
+
+
+void setup() {
+  // Inicializar os Leds
+  pinMode(Semafaro_Verde , OUTPUT);
+  pinMode(Semafaro_Amarelo , OUTPUT);
+  pinMode(Semafaro_Vermelho , OUTPUT);
+  pinMode(Pedestre_Verde , OUTPUT);
+  pinMode(Pedestre_Vermelho , OUTPUT);
+
+  //Inicializar Porta para o Push Button
+  pinMode(Porta_Botao , INPUT);
+
+  //Inicializar Porta analogica para LDR
+  pinMode(LDR , OUTPUT);
+  Serial.begin(9600);
+
+  //Iniciliza pinos de sinal do conversor binario para o Sete segmentos
+  pinMode(8 , OUTPUT);
+  pinMode(9 , OUTPUT);
+  pinMode(10 , OUTPUT);
+  pinMode(11 , OUTPUT);
+  
+  // Inicializar a rotina de interrupcao periodica
+  Timer1.initialize(1000000); // Interrupcao a cada 1s
+  Timer1.attachInterrupt(Maquina_Estados); // Associa a interrupcao periodica a funcao Maquina_Estados
+}
+
+
+//Função que manda o sinal necessário para o Display ascender determinado numero
+void Sete_Segmentos() {
+  if(Cont3==0 || Cont3==10){
+    digitalWrite(8, LOW);
+    digitalWrite(9, LOW);
+    digitalWrite(10, LOW);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==1){
+    digitalWrite(8, HIGH);
+    digitalWrite(9, LOW);
+    digitalWrite(10, LOW);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==2){
+    digitalWrite(8, LOW);
+    digitalWrite(9, HIGH);
+    digitalWrite(10, LOW);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==3){
+    digitalWrite(8, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(10, LOW);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==4){
+    digitalWrite(8, LOW);
+    digitalWrite(9, LOW);
+    digitalWrite(10, HIGH);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==5){
+    digitalWrite(8, HIGH);
+    digitalWrite(9, LOW);
+    digitalWrite(10, HIGH);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==6){
+    digitalWrite(8, LOW);
+    digitalWrite(9, HIGH);
+    digitalWrite(10, HIGH);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==7){
+    digitalWrite(8, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(10, HIGH);
+    digitalWrite(11, LOW);
+  }
+  if(Cont3==8){
+    digitalWrite(8, LOW);
+    digitalWrite(9, LOW);
+    digitalWrite(10, LOW);
+    digitalWrite(1, HIGH);
+  }
+  if(Cont3==9){
+    digitalWrite(8, HIGH);
+    digitalWrite(9, LOW);
+    digitalWrite(10, LOW);
+    digitalWrite(11, HIGH);
+  }              
+  
+}
+
+//Função que realiza as mudanças de estado
+void Maquina_Estados() { 
+  if(Estado==0 && Botao==1){ 
+    Estado=1;
+    Botao=0;
+    Timer1.setPeriod(1000000*Segundos);
+  }
+  else if(Estado==1) {
+    Estado=2;
+    Timer1.setPeriod(1000000);
+  }
+  else if(Estado==2) {
+    Cont3--;
+    Timer1.setPeriod(1000000);          
+    Sete_Segmentos();
+    if(Cont3<=0){
+      Estado=3;
+      Cont3=10;
+    }
+  }
+  else if(Estado==3){
+    Cont1++;
+    Timer1.setPeriod(1000000/Cont1);
+    if(Cont1==14){
+      Estado=0;
+      Cont1=0;
+      Cont2=0;
+      Pisca=1;
+      Segundos=5;
+      Timer1.setPeriod(1000000*Segundos);      
+    }
+  }
+  else if(Estado==4){
+    if(Pisca==0){
+      Pisca=1;
+    }
+    else{
+      Pisca=0;
+    }
+  }
+  if(Estado==4 && Luz>900){
+    Estado=0;
+  } 
+  Serial.print(Cont3);     
+}
+
+
+//estado = 0 : Verde para o semaforo de veiculos e vermelho para o de pedestres.
+//estado = 1 : Amarelo para o semaforo de veiculos e vermelho para o de pedestres.
+//estado = 2 : Vermelho para o semaforo de veiculos e verde para o de pedestres.
+//estado = 3 : Vermelho para o semaforo de veiculos e vermelho piscando para o de pedestres.
+//estado = 4 : Amarelo piscando para o semaforo de veiculos e o de pedestres desligado.
+void loop() {  
+  Luz=analogRead(LDR);  
+  if(digitalRead(Porta_Botao)){
+    Botao=1;
+  }
+  //Quando a variavel "Luz" é menor que um determinado valor relacionado a intensidade da luz(consequentemente de tensão), o programa entra na condição abaixo.
+  if(Luz<=900){
+    //Variavel "Noite" será incrementada até 20000 (5 segundos), ou seja, só entrará na condição abaixo após atingir esse tempo de "não claridade". 
+    Noite++;
+    if(Noite>20000 && (Estado==0 || Estado==4)){
+      //A variavel "Noite" é decrementada abaixo para que o valor int da variave não exploda.
+      Noite--;
+      Botao=0;
+      Timer1.setPeriod(500000);
+      Estado=4;
+      digitalWrite(Semafaro_Verde, LOW);
+      digitalWrite(Pedestre_Vermelho, LOW);
+      digitalWrite(Semafaro_Vermelho, LOW);
+      digitalWrite(Pedestre_Verde, LOW);
+      if (Pisca == 0) {
+        digitalWrite(Semafaro_Amarelo, HIGH);
+      }
+      else {
+        digitalWrite(Semafaro_Amarelo, LOW);
+      }      
+    }
+  }
+  //As próximas duas condições abaixo funcionam de forma que os estados atuais não parem de funcionar quando o tempo de "não claridade" for menor que 5 segundos (20000) ou a "claridade" volte.
+  if(Luz>900){
+    Noite=0;  
+  }
+  if(Luz>900 || Noite<20000){
+    if(Estado==0){
+      digitalWrite(Semafaro_Verde, HIGH);
+      digitalWrite(Pedestre_Vermelho, HIGH);
+      digitalWrite(Semafaro_Vermelho, LOW);
+      digitalWrite(Pedestre_Verde, LOW);
+      digitalWrite(Semafaro_Amarelo, LOW);
+    }
+    else if(Estado==1) {
+      digitalWrite(Semafaro_Verde, LOW);
+      digitalWrite(Semafaro_Amarelo, HIGH);
+      Segundos=5;
+    }
+    else if(Estado==2) {
+      digitalWrite(Semafaro_Amarelo, LOW);
+      digitalWrite(Semafaro_Vermelho, HIGH);
+      digitalWrite(Pedestre_Verde, HIGH);
+      digitalWrite(Pedestre_Vermelho, LOW);
+    }
+    else if(Estado==3 && Cont1>=Cont2) {
+      Cont2++;
+      digitalWrite(Pedestre_Verde, LOW);
+      if (Pisca == 0) {
+        Pisca = 1;
+        digitalWrite(Pedestre_Vermelho, HIGH);
+      }
+      else {
+        Pisca = 0;
+        digitalWrite(Pedestre_Vermelho, LOW);
+      }
+    }
+  }     
+}
